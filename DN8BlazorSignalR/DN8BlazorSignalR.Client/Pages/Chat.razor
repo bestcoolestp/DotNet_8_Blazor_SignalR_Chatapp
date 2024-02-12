@@ -1,0 +1,52 @@
+﻿@page "/chat"
+@inject NavigationManager NavigationManager
+@rendermode InteractiveWebAssembly
+
+
+<h3>.Net8 Blazor SignalR Chat  닷넷8 블레이저 시그널R 채팅 앱</h3>
+@if(isConnected)
+{
+	<input type="text" @bind="userInput"/>
+	<input type="text" @bind="messageInput"/>
+	<button @onclick="Send">보내기 Send</button>
+
+	<ul id="messagesList">
+		@foreach (var message in messages)
+		{
+			<li>
+				@message
+			</li>
+		}
+	</ul>
+}
+else
+{
+	<span>연결중.... Connecting</span>
+}
+
+@code {
+	private HubConnection hubConnection;
+	private List<string> messages = new List<string>();
+	private string userInput;
+	private string messageInput;
+
+	protected override async Task OnInitializedAsync()
+	{
+		hubConnection = new HubConnectionBuilder()
+		.WithUrl(NavigationManager.ToAbsoluteUri("/chathub"))
+		.Build();
+
+		hubConnection.On<string, string>("ReceiveMessage", (user, message) =>
+		{
+			var encodedMsg = $"{user}: {message}";
+			messages.Add(encodedMsg);
+			StateHasChanged();
+		});
+
+		await hubConnection.StartAsync();
+	}
+
+	Task Send() => hubConnection.SendAsync("SendMessage", userInput, messageInput);
+
+	public bool isConnected => hubConnection.State == HubConnectionState.Connected;
+}
